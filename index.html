@@ -56,8 +56,8 @@ dialog label{margin-bottom:10px}
   <section class="card" id="formCard">
     <h2 id="formTitle">إضافة سجل جديد</h2>
     <div class="grid">
-      <label>اسم السائق<select id="driver"></select></label>
-      <label>الشركة<select id="company"></select></label>
+      <label>اسم السائق<input id="driver" placeholder="اكتب اسم السائق" autocomplete="off"></label>
+      <label>الشركة<input id="company" placeholder="اكتب اسم الشركة" autocomplete="off"></label>
       <label>الرحلة<input id="tripNo" placeholder="رقم الرحلة"></label>
       <label>الرقم المتسلسل<input id="serialNo" placeholder="أدخل الرقم"></label>
       <label>التاريخ<input id="recordDate" type="date"></label>
@@ -74,7 +74,7 @@ dialog label{margin-bottom:10px}
       <h2>سجلات الرحلات</h2>
       <div class="filters">
         <input type="date" id="filterDate" aria-label="تصفية حسب التاريخ">
-        <select id="filterDriver" aria-label="تصفية حسب السائق"></select>
+        <input id="filterDriver" placeholder="بحث باسم السائق" aria-label="بحث باسم السائق">
       </div>
     </div>
     <div class="scroll">
@@ -99,7 +99,181 @@ dialog label{margin-bottom:10px}
 
 <script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="db.js"></script>
-<script src="app.js"></script>
+<script>
+// Data layer. app.js only talks to window.db, so swapping backends never touches the UI.
+(function () {
+  const cfg = window.APP_CONFIG;
+  const useSupabase = !!(cfg.supabaseUrl && cfg.supabaseAnonKey);
+
+  /* ---------- Local mode (localStorage) ---------- */
+  const LS = "fleet-records-v1";
+  const seed = {
+    records: [], nextId: 1
+  };
+  const load = () => { try { return JSON.parse(localStorage.getItem(LS)) || structuredClone(seed); } catch { return structuredClone(seed); } };
+  const save = (s) => { try { localStorage.setItem(LS, JSON.stringify(s)); } catch (e) { console.error(e); } };
+
+  const local = {
+    async listRecords({ page, pageSize, date, driver }) {
+      const s = load();
+      const q = (driver || "").toLowerCase();
+      let rows = s.records.filter(r => (!date || r.record_date === date) && (!q || (r.driver_name || "").toLowerCase().includes(q)))
+        .sort((a, b) => b.record_date.localeCompare(a.record_date) || b.id - a.id);
+      const total = rows.length;
+      return { rows: rows.slice((page - 1) * pageSize, page * pageSize), total };
+    },
+    async addRecord(r) { const s = load(); s.records.push({ ...r, id: s.nextId++ }); save(s); },
+    async updateRecord(id, r) { const s = load(); const i = s.records.findIndex(x => x.id === id); if (i >= 0) s.records[i] = { ...s.records[i], ...r }; save(s); },
+    async deleteRecord(id) { const s = load(); s.records = s.records.filter(x => x.id !== id); save(s); },
+    async session() { return true; },
+    async signIn() { return true; }
+  };
+
+  /* ---------- Supabase mode ---------- */
+  let sb;
+  const remote = {
+    async listRecords({ page, pageSize, date, driver }) {
+      let q = sb.from("records").select("*", { count: "exact" })
+        .order("record_date", { ascending: false }).order("id", { ascending: false })
+        .range((page - 1) * pageSize, page * pageSize - 1);
+      if (date) q = q.eq("record_date", date);
+      if (driver) q = q.ilike("driver_name", `%${driver.replace(/[%_]/g, "")}%`);
+      const { data, count, error } = await q;
+      if (error) throw error;
+      return { rows: data, total: count || 0 };
+    },
+    async addRecord(r) { const { error } = await sb.from("records").insert(r); if (error) throw error; },
+    async updateRecord(id, r) { const { error } = await sb.from("records").update(r).eq("id", id); if (error) throw error; },
+    async deleteRecord(id) { const { error } = await sb.from("records").delete().eq("id", id); if (error) throw error; },
+    async session() { const { data } = await sb.auth.getSession(); return !!data.session; },
+    async signIn(email, password) { const { error } = await sb.auth.signInWithPassword({ email, password }); if (error) throw error; return true; }
+  };
+
+  if (useSupabase) sb = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
+  window.db = useSupabase ? remote : local;
+  window.db.mode = useSupabase ? "supabase" : "local";
+})();
+
+</script>
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const cfg = window.APP_CONFIG;
+  const state = { page: 1, editingId: null, rows: [] };
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const today = () => new Date().toISOString().slice(0, 10);
+
+  function header() {
+    $("companyName").textContent = cfg.companyName;
+    const d = new Date();
+    $("todayDate").textContent = today();
+    $("todayDay").textContent = d.toLocaleDateString("ar", { weekday: "long" });
+  }
+
+  function resetForm() {
+    state.editingId = null;
+    $("driver").value = ""; $("company").value = ""; $("tripNo").value = ""; $("serialNo").value = "";
+    $("recordDate").value = today();
+    $("formTitle").textContent = "إضافة سجل جديد";
+    $("saveBtn").textContent = "حفظ السجل";
+    $("formError").textContent = "";
+  }
+
+  async function save() {
+    const rec = {
+      driver_name: $("driver").value.trim(),
+      company_name: $("company").value.trim(),
+      trip_no: $("tripNo").value.trim(),
+      serial_no: $("serialNo").value.trim(),
+      record_date: $("recordDate").value
+    };
+    if (!rec.driver_name || !rec.company_name || !rec.trip_no || !rec.record_date) {
+      $("formError").textContent = "اكتب اسم السائق واسم الشركة ورقم الرحلة واختر التاريخ.";
+      return;
+    }
+    $("saveBtn").disabled = true;
+    try {
+      if (state.editingId) await db.updateRecord(state.editingId, rec); else await db.addRecord(rec);
+      resetForm();
+      await refresh();
+    } catch (e) {
+      console.error(e);
+      $("formError").textContent = "تعذر حفظ السجل. تحقق من الاتصال وحاول مرة أخرى.";
+    } finally { $("saveBtn").disabled = false; }
+  }
+
+  async function refresh() {
+    const pageSize = cfg.pageSize || 10;
+    try {
+      const { rows, total } = await db.listRecords({ page: state.page, pageSize, date: $("filterDate").value, driver: $("filterDriver").value.trim() });
+      const pages = Math.max(1, Math.ceil(total / pageSize));
+      if (state.page > pages) { state.page = pages; return refresh(); }
+      state.rows = rows;
+      $("rows").innerHTML = rows.length ? rows.map((r, i) => `
+        <tr>
+          <td>${(state.page - 1) * pageSize + i + 1}</td>
+          <td>${esc(r.driver_name)}</td><td>${esc(r.company_name)}</td>
+          <td>${esc(r.trip_no)}</td><td>${esc(r.serial_no)}</td><td>${esc(r.record_date)}</td>
+          <td>
+            <button class="icon v" data-act="view" data-id="${r.id}">عرض</button>
+            <button class="icon e" data-act="edit" data-id="${r.id}">تعديل</button>
+            <button class="icon d" data-act="del" data-id="${r.id}">حذف</button>
+          </td></tr>`).join("") : `<tr><td colspan="7" class="empty">لا توجد سجلات. أضف أول سجل من النموذج أعلاه.</td></tr>`;
+      const from = total ? (state.page - 1) * pageSize + 1 : 0;
+      $("pageInfo").textContent = `عرض ${from} إلى ${Math.min(state.page * pageSize, total)} من ${total} سجل`;
+      $("pageBtns").innerHTML = `<button data-p="${state.page - 1}" ${state.page <= 1 ? "disabled" : ""}>السابق</button>
+        <button class="on" disabled>${state.page}</button>
+        <button data-p="${state.page + 1}" ${state.page >= pages ? "disabled" : ""}>التالي</button>`;
+    } catch (e) {
+      console.error(e);
+      $("rows").innerHTML = `<tr><td colspan="7" class="empty">تعذر تحميل السجلات. تحقق من الاتصال.</td></tr>`;
+    }
+  }
+
+  function onRowAction(e) {
+    const b = e.target.closest("button[data-act]"); if (!b) return;
+    const id = Number(b.dataset.id); const r = state.rows.find(x => x.id === id); if (!r) return;
+    if (b.dataset.act === "view") {
+      $("viewBody").innerHTML = [["السائق", r.driver_name], ["الشركة", r.company_name], ["الرحلة", r.trip_no], ["الرقم المتسلسل", r.serial_no], ["التاريخ", r.record_date]]
+        .map(([k, v]) => `<div class="kv"><span>${k}</span><span>${esc(v)}</span></div>`).join("");
+      $("viewDialog").showModal();
+    } else if (b.dataset.act === "edit") {
+      state.editingId = id;
+      $("driver").value = r.driver_name; $("company").value = r.company_name;
+      $("tripNo").value = r.trip_no; $("serialNo").value = r.serial_no || ""; $("recordDate").value = r.record_date;
+      $("formTitle").textContent = "تعديل السجل"; $("saveBtn").textContent = "حفظ التعديل";
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } else if (b.dataset.act === "del") {
+      if (confirm("حذف هذا السجل نهائيًا؟")) db.deleteRecord(id).then(refresh).catch(console.error);
+    }
+  }
+
+  async function ensureLogin() {
+    if (await db.session()) return;
+    const dlg = $("loginDialog"); dlg.showModal();
+    await new Promise(resolve => {
+      $("loginBtn").onclick = async () => {
+        try { await db.signIn($("loginEmail").value, $("loginPass").value); dlg.close(); resolve(); }
+        catch { $("loginError").textContent = "البريد أو كلمة المرور غير صحيحة."; }
+      };
+    });
+  }
+
+  async function init() {
+    header();
+    await ensureLogin();
+    resetForm();
+    $("saveBtn").onclick = save;
+    $("resetBtn").onclick = resetForm;
+    $("rows").onclick = onRowAction;
+    $("pageBtns").onclick = (e) => { const b = e.target.closest("button[data-p]"); if (b && !b.disabled) { state.page = Number(b.dataset.p); refresh(); } };
+    $("filterDate").onchange = () => { state.page = 1; refresh(); };
+    let t; $("filterDriver").oninput = () => { clearTimeout(t); t = setTimeout(() => { state.page = 1; refresh(); }, 300); };
+    refresh();
+  }
+  init().catch(e => { console.error(e); $("rows").innerHTML = `<tr><td colspan="7" class="empty">تعذر بدء التطبيق. راجع إعدادات الاتصال في js/config.js.</td></tr>`; });
+})();
+
+</script>
 </body>
 </html>
