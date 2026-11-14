@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>متابعة حركة النقل والمركبات</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header class="top">
+  <div class="date"><strong id="todayDate"></strong><span id="todayDay"></span></div>
+  <div class="brand"><h1 id="companyName">اسم المؤسسة</h1><p>متابعة حركة النقل والمركبات</p></div>
+</header>
+
+<main>
+  <section class="card" id="formCard">
+    <h2 id="formTitle">إضافة سجل جديد</h2>
+    <div class="grid">
+      <label>اسم السائق<select id="driver"></select></label>
+      <label>الشركة<select id="company"></select></label>
+      <label>الرحلة<input id="tripNo" placeholder="رقم الرحلة"></label>
+      <label>الرقم المتسلسل<input id="serialNo" placeholder="أدخل الرقم"></label>
+      <label>التاريخ<input id="recordDate" type="date"></label>
+    </div>
+    <p class="error" id="formError" role="alert"></p>
+    <div class="actions">
+      <button class="primary" id="saveBtn">حفظ السجل</button>
+      <button class="ghost" id="resetBtn">إعادة تعيين</button>
+    </div>
+  </section>
+
+  <section class="card table-card">
+    <div class="table-head">
+      <h2>سجلات الرحلات</h2>
+      <div class="filters">
+        <input type="date" id="filterDate" aria-label="تصفية حسب التاريخ">
+        <select id="filterDriver" aria-label="تصفية حسب السائق"></select>
+      </div>
+    </div>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>#</th><th>اسم السائق</th><th>الشركة</th><th>الرحلة</th><th>الرقم المتسلسل</th><th>التاريخ</th><th>الإجراءات</th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <div class="pager"><span id="pageInfo"></span><div id="pageBtns"></div></div>
+  </section>
+</main>
+
+<dialog id="viewDialog"><div id="viewBody"></div><button class="ghost" onclick="viewDialog.close()">إغلاق</button></dialog>
+
+<dialog id="loginDialog">
+  <h2>تسجيل الدخول</h2>
+  <label>البريد الإلكتروني<input id="loginEmail" type="email" autocomplete="username"></label>
+  <label>كلمة المرور<input id="loginPass" type="password" autocomplete="current-password"></label>
+  <p class="error" id="loginError" role="alert"></p>
+  <button class="primary" id="loginBtn">دخول</button>
+</dialog>
+
+<script src="js/config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="js/db.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
