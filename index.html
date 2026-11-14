@@ -1,68 +1,173 @@
-<!doctype html>
-<html lang="ar" dir="rtl">
+<!DOCTYPE html>
+<html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>متابعة حركة النقل والمركبات</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Login - SchoolApp</title>
+<style>
+:root{
+  --bg:#f5f7fb; --surface:#fff; --text:#1f2a44; --muted:#6b7694; --line:#e4e8f1;
+  --brand:#5b5bf0; --brand2:#8a5cf6; --ok:#16a34a; --danger:#e5484d;
+}
+body.dark{
+  --bg:#12141c; --surface:#1c1f2b; --text:#eef0f7; --muted:#9aa3bd; --line:#2d3243;
+}
+*{margin:0;padding:0;box-sizing:border-box;font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif}
+body{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;
+  background:linear-gradient(135deg,var(--brand),var(--brand2));color:var(--text)}
+
+.login-box{width:100%;max-width:410px;background:var(--surface);border-radius:22px;
+  padding:36px 30px;box-shadow:0 20px 50px rgba(0,0,0,.3);animation:slide .5s ease}
+@keyframes slide{from{transform:translateY(-24px);opacity:0}to{transform:none;opacity:1}}
+
+.avatar{width:84px;height:84px;border-radius:50%;margin:0 auto 14px;overflow:hidden;
+  display:grid;place-items:center;font-size:38px;
+  background:linear-gradient(135deg,var(--brand),var(--brand2));
+  box-shadow:0 8px 20px rgba(91,91,240,.35)}
+.avatar img{width:100%;height:100%;object-fit:cover}
+
+h1{text-align:center;font-size:24px}
+.sub{text-align:center;color:var(--muted);font-size:14px;margin:6px 0 24px}
+
+.field{margin-bottom:16px}
+label{display:block;font-size:13px;font-weight:600;color:var(--muted);margin-bottom:6px}
+.input{position:relative}
+input[type=text],input[type=password]{width:100%;padding:13px 14px;border:1px solid var(--line);
+  border-radius:12px;background:var(--bg);color:var(--text);font-size:15px;outline:none;
+  transition:border-color .2s,box-shadow .2s}
+input:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(91,91,240,.15)}
+.input input{padding-right:48px}
+.eye{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:38px;height:38px;
+  border:none;background:none;cursor:pointer;font-size:18px;border-radius:8px}
+.eye:hover{background:var(--line)}
+
+.options{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;
+  font-size:14px;color:var(--muted)}
+.options label{display:flex;align-items:center;gap:8px;margin:0;font-weight:500;font-size:14px;cursor:pointer}
+.options input{accent-color:var(--brand);width:16px;height:16px}
+
+.error{display:none;background:rgba(229,72,77,.12);color:var(--danger);border-radius:10px;
+  padding:10px 12px;font-size:14px;margin-bottom:16px;font-weight:600}
+.error.show{display:block}
+
+.btn{width:100%;padding:14px;border:none;border-radius:12px;font-size:16px;font-weight:700;
+  cursor:pointer;color:#fff;background:linear-gradient(90deg,var(--brand),var(--brand2));
+  transition:transform .15s,opacity .2s}
+.btn:hover{opacity:.92}
+.btn:active{transform:scale(.98)}
+.btn:disabled{opacity:.6;cursor:wait}
+
+.footer{text-align:center;margin-top:22px;color:var(--muted);font-size:13px}
+
+button:focus-visible,input:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
 </head>
 <body>
-<header class="top">
-  <div class="date"><strong id="todayDate"></strong><span id="todayDay"></span></div>
-  <div class="brand"><h1 id="companyName">اسم المؤسسة</h1><p>متابعة حركة النقل والمركبات</p></div>
-</header>
 
-<main>
-  <section class="card" id="formCard">
-    <h2 id="formTitle">إضافة سجل جديد</h2>
-    <div class="grid">
-      <label>اسم السائق<select id="driver"></select></label>
-      <label>الشركة<select id="company"></select></label>
-      <label>الرحلة<input id="tripNo" placeholder="رقم الرحلة"></label>
-      <label>الرقم المتسلسل<input id="serialNo" placeholder="أدخل الرقم"></label>
-      <label>التاريخ<input id="recordDate" type="date"></label>
-    </div>
-    <p class="error" id="formError" role="alert"></p>
-    <div class="actions">
-      <button class="primary" id="saveBtn">حفظ السجل</button>
-      <button class="ghost" id="resetBtn">إعادة تعيين</button>
-    </div>
-  </section>
+<main class="login-box">
 
-  <section class="card table-card">
-    <div class="table-head">
-      <h2>سجلات الرحلات</h2>
-      <div class="filters">
-        <input type="date" id="filterDate" aria-label="تصفية حسب التاريخ">
-        <select id="filterDriver" aria-label="تصفية حسب السائق"></select>
+  <div class="avatar" id="avatar">
+    <img src="myphoto.jpg" alt="Profile" id="avatarImg">
+  </div>
+
+  <h1>Welcome Back</h1>
+  <p class="sub">Sign in to continue to SchoolApp</p>
+
+  <div class="error" id="error" role="alert"></div>
+
+  <form id="loginForm" novalidate>
+    <div class="field">
+      <label for="username">Username</label>
+      <input id="username" type="text" placeholder="Enter your username" autocomplete="username">
+    </div>
+
+    <div class="field">
+      <label for="password">Password</label>
+      <div class="input">
+        <input id="password" type="password" placeholder="Enter your password" autocomplete="current-password">
+        <button class="eye" id="eye" type="button" aria-label="Show password">👁️</button>
       </div>
     </div>
-    <div class="scroll">
-      <table>
-        <thead><tr><th>#</th><th>اسم السائق</th><th>الشركة</th><th>الرحلة</th><th>الرقم المتسلسل</th><th>التاريخ</th><th>الإجراءات</th></tr></thead>
-        <tbody id="rows"></tbody>
-      </table>
+
+    <div class="options">
+      <label><input type="checkbox" id="remember"> Remember me</label>
     </div>
-    <div class="pager"><span id="pageInfo"></span><div id="pageBtns"></div></div>
-  </section>
+
+    <button class="btn" id="loginBtn" type="submit">Login</button>
+  </form>
+
+  <p class="footer">© 2026 SchoolApp. All rights reserved.</p>
+
 </main>
 
-<dialog id="viewDialog"><div id="viewBody"></div><button class="ghost" onclick="viewDialog.close()">إغلاق</button></dialog>
+<script>
+/* ---------- Settings (change these) ---------- */
+const HOME = "index.html";          // page opened after login
+const USER = "amir";
+const PASS = "12345";
 
-<dialog id="loginDialog">
-  <h2>تسجيل الدخول</h2>
-  <label>البريد الإلكتروني<input id="loginEmail" type="email" autocomplete="username"></label>
-  <label>كلمة المرور<input id="loginPass" type="password" autocomplete="current-password"></label>
-  <p class="error" id="loginError" role="alert"></p>
-  <button class="primary" id="loginBtn">دخول</button>
-</dialog>
+const $ = id => document.getElementById(id);
 
-<script src="js/config.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="js/db.js"></script>
-<script src="js/app.js"></script>
+/* ---------- Dark mode (same as other pages) ---------- */
+try { document.body.classList.toggle("dark", localStorage.getItem("theme") === "dark"); } catch(e) {}
+
+/* ---------- Photo fallback: shows 🏫 if myphoto.jpg is missing ---------- */
+$("avatarImg").addEventListener("error", () => { $("avatar").textContent = "🏫"; });
+
+/* ---------- Remember username ---------- */
+try {
+  const saved = localStorage.getItem("remember_user");
+  if (saved){ $("username").value = saved; $("remember").checked = true; }
+} catch(e) {}
+
+/* ---------- Show / hide password ---------- */
+$("eye").addEventListener("click", () => {
+  const show = $("password").type === "password";
+  $("password").type = show ? "text" : "password";
+  $("eye").textContent = show ? "🙈" : "👁️";
+  $("eye").setAttribute("aria-label", show ? "Hide password" : "Show password");
+});
+
+/* ---------- Errors ---------- */
+function showError(msg){
+  $("error").textContent = msg;
+  $("error").classList.add("show");
+}
+function clearError(){ $("error").classList.remove("show"); }
+$("username").addEventListener("input", clearError);
+$("password").addEventListener("input", clearError);
+
+/* ---------- Login ---------- */
+$("loginForm").addEventListener("submit", e => {
+  e.preventDefault();
+  clearError();
+
+  const username = $("username").value.trim();
+  const password = $("password").value;
+
+  if (!username || !password){
+    showError("Please enter your username and password");
+    return;
+  }
+
+  if (username === USER && password === PASS){
+    try {
+      if ($("remember").checked) localStorage.setItem("remember_user", username);
+      else localStorage.removeItem("remember_user");
+      sessionStorage.setItem("loggedIn", "1");
+    } catch(e) {}
+
+    $("loginBtn").disabled = true;
+    $("loginBtn").textContent = "Signing in...";
+    setTimeout(() => { window.location.href = HOME; }, 600);
+  } else {
+    showError("Invalid username or password");
+    $("password").value = "";
+    $("password").focus();
+  }
+});
+</script>
+
 </body>
 </html>
